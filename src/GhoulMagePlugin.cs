@@ -10,14 +10,27 @@ namespace GhoulMage.LethalCompany
     // Game version does not come up until the main menu is loaded.
     // This is because for some reason it is inside a Singleton (GameNetworkManager), it's not even a const.
     // We need to workaround this by waiting until the singleton instance exists to check the version number and dispatch if that's a compatible version to load the mod in.
+    [BepInDependency("LC_API", BepInDependency.DependencyFlags.SoftDependency)]
     public abstract class GhoulMagePlugin : BaseUnityPlugin
     {
-        protected const ushort Version = 1;
-        protected abstract LethalGameVersions GameCompatibility
-        {
-            get;
-        }
+        /// <summary>
+        /// API version of the GhoulMagePlugin
+        /// </summary>
+        protected const string Version = "1.0.1";
+
+        /// <summary>
+        /// Version of GhoulMage.LethalCompany. Should match Assembly version.
+        /// </summary>
+        public const string APIVersion = "2.0.0";
+
+        /// <summary>
+        /// Override this to allow compatibility with game versions. Use the version number as in steam patches (40, 45, etc...)
+        /// </summary>
+        protected abstract LethalGameVersions GameCompatibility { get; }
         protected Harmony HarmonyInstance { get; private set; }
+        /// <summary>
+        /// Override this with Assembly.GetExecutingAssembly() (your plugin assembly, usually) to correctly tell Harmony which assembly to patch the game with.
+        /// </summary>
         protected abstract Assembly AssemblyToPatch { get; }
 
         private Action _onSuccesfulLoad, _onFailedLoad;
@@ -87,7 +100,7 @@ namespace GhoulMage.LethalCompany
             Logger.LogInfo("Created Loader. Will patch all? " + (patchImmediate ? "Yes" : "No"));
         }
 
-        protected void PatchAllASAPIfCompatible(string name)
+        private void PatchAllASAPIfCompatible(string name)
         {
             GameObject patcher = new GameObject($"{name} Loader");
             DontDestroyOnLoad(patcher);
@@ -100,12 +113,13 @@ namespace GhoulMage.LethalCompany
             patchScript.VersionCompatibleCallback = _onSuccesfulLoad;
             patchScript.VersionIncompatibleCallback = _onFailedLoad;
         }
-        protected void WaitToCheckCompatibility()
+        private void WaitToCheckCompatibility()
         {
-            GameObject patcher = new GameObject($"{name} Loader");
-            DontDestroyOnLoad(patcher);
+            GameObject loaderGameObject = new GameObject($"{name} Loader");
+            DontDestroyOnLoad(loaderGameObject);
+            loaderGameObject.hideFlags = HideFlags.HideAndDontSave;
 
-            LatePatcher patchScript = patcher.AddComponent<LatePatcher>();
+            LatePatcher patchScript = loaderGameObject.AddComponent<LatePatcher>();
             patchScript.compatibleVersions = GameCompatibility;
             patchScript.Logger = Logger;
             patchScript.VersionCompatibleCallback = _onSuccesfulLoad;
@@ -146,22 +160,20 @@ namespace GhoulMage.LethalCompany
     /// </summary>
     internal class LatePatcher : MonoBehaviour
     {
-        public Harmony Harmony;
-        public LethalGameVersions compatibleVersions;
-        public ManualLogSource Logger;
-        public Assembly Assembly;
-        public Action VersionCompatibleCallback;
-        public Action VersionIncompatibleCallback;
+        internal Harmony Harmony;
+        internal LethalGameVersions compatibleVersions;
+        internal ManualLogSource Logger;
+        internal Assembly Assembly;
+        internal Action VersionCompatibleCallback;
+        internal Action VersionIncompatibleCallback;
 
         private void Update()
         {
             if (GameNetworkManager.Instance != null)
             {
-                if (compatibleVersions.CompatibleWith(LethalApp.Version))
+                if (compatibleVersions.CompatibleWith(LC_Info.GameVersion))
                 {
-                    Logger.LogInfo($"Compatible with Game Version {LethalApp.Version}!");
-
-                    VersionCompatibleCallback?.Invoke();
+                    Logger.LogInfo($"Compatible with Game Version {LC_Info.GameVersion}!");
 
                     //Might be null if the user didn't want to patch all immediatelly
                     if (Harmony != null)
@@ -169,12 +181,13 @@ namespace GhoulMage.LethalCompany
                         Logger.LogInfo("About to patch everything!");
                         Harmony.PatchAll(Assembly);
                     }
+
+                    VersionCompatibleCallback?.Invoke();
                 }
                 else
                 {
-                    Logger.LogError($"Incompatible due to Game Version {LethalApp.Version}...");
+                    Logger.LogError($"Incompatible due to Game Version {LC_Info.GameVersion}...");
                     VersionIncompatibleCallback?.Invoke();
-
                 }
                 DestroyImmediate(gameObject);
             }

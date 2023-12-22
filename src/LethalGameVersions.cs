@@ -1,9 +1,11 @@
 namespace GhoulMage.LethalCompany
 {
+    /// <summary>
+    /// Helper class to contain LethalCompany game versions
+    /// </summary>
     public class LethalGameVersions
     {
-        public const char VersionPrefix = 'v';
-        string[] _versions;
+        private string[] _versions;
 
         public LethalGameVersions(params string[] versions)
         {
@@ -11,7 +13,7 @@ namespace GhoulMage.LethalCompany
         }
 
         /// <summary>
-        /// Version name format: {VersionPrefix}{versionNumber}
+        /// Is the game compatible with the specified version?<br/>Version string format: '<inheritdoc cref="LC_Info.VersionPrefix"/>'
         /// </summary>
         public bool CompatibleWith(string version)
         {
@@ -19,14 +21,18 @@ namespace GhoulMage.LethalCompany
             {
                 if (ver.Equals(version))
                     return true;
-
-
             }
             return false;
         }
+
+        /// <summary>
+        /// Is the game compatible with the specified version?
+        /// </summary>
+        /// <param name="version"></param>
+        /// <returns></returns>
         public bool CompatibleWith(int version)
         {
-            return CompatibleWith($"{VersionPrefix}{version}");
+            return CompatibleWith($"{LC_Info.VersionPrefix}{version}");
         }
     }
 }
