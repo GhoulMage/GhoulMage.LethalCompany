@@ -1,4 +1,4 @@
-GhoulMage.LethalCompany v1.0.0 (stable)
+GhoulMage.LethalCompany v2.0.0 (stable)
 ==============
 
 Common API for some Lethal Company plugins. Free to use.<br>
